@@ -134,6 +134,87 @@ def health():
 # ...existing code...
 
 
+@server.route("/upload", methods=["POST"])
+def upload():
+    auth_data, err = validate.token(request)
+    if err:
+        return err
+
+    try:
+        auth_data = json.loads(auth_data)
+    except Exception:
+        return {"status": "error", "detail": "invalid auth payload"}, 401
+
+    if not auth_data.get("admin"):
+        return "not authorized", 401
+
+    if len(request.files) != 1:
+        return "exactly 1 file required", 400
+
+    try:
+        rabbit_channel = get_rabbit_channel()
+    except Exception:
+        logging.exception("rabbitmq unavailable")
+        return {"status": "error", "detail": "rabbitmq unavailable"}, 503
+
+    for _, f in request.files.items():
+        err = util.upload(f, fs_videos, rabbit_channel, auth_data)
+        if err:
+            if isinstance(err, tuple):
+                status_code = err[1] if len(err) > 1 else 500
+                return {"status": "error", "detail": str(err[0])}, status_code
+            return {"status": "error", "detail": str(err)}, 500
+
+    return {"status": "success"}, 200
+
+
+@server.route("/download", methods=["GET"])
+def download():
+    auth_data, err = validate.token(request)
+    if err:
+        return err
+
+    try:
+        auth_data = json.loads(auth_data)
+    except Exception:
+        return {"status": "error", "detail": "invalid auth payload"}, 401
+
+    if not auth_data.get("admin"):
+        return "not authorized", 401
+
+    fid_string = request.args.get("fid")
+    if not fid_string:
+        return "fid is required", 400
+
+    try:
+        obj_id = ObjectId(fid_string)
+    except Exception:
+        return "invalid fid", 400
+
+    try:
+        logging.info("download request for fid=%s on mp3 DB=%s", fid_string, mongo_mp3_db.name)
+        if not fs_mp3s.exists({"_id": obj_id}):
+            logging.error("download failed: mp3 id %s does not exist in DB %s", fid_string, mongo_mp3_db.name)
+            return "file not found", 404
+
+        out = fs_mp3s.get(obj_id)
+        data = out.read()
+        buf = io.BytesIO(data)
+        buf.seek(0)
+        return send_file(
+            buf,
+            download_name=f"{fid_string}.mp3",
+            mimetype="audio/mpeg",
+            as_attachment=True,
+        )
+    except gridfs.errors.NoFile:
+        logging.error("download failed: no file with id %s in mp3 DB %s", fid_string, mongo_mp3_db.name)
+        return "file not found", 404
+    except Exception:
+        logging.exception("download failed")
+        return "internal server error", 500
+
 
 if __name__ == "__main__":
     server.run(host="0.0.0.0", port=8080)
+    # meme
