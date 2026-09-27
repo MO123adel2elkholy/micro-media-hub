@@ -1,7 +1,3 @@
-// ...existing code...
-
-[![build](https://img.shields.io/badge/build-pending-lightgrey)](#) [![tests](https://img.shields.io/badge/tests-pending-lightgrey)](#) [![coverage](https://img.shields.io/badge/coverage-unknown-lightgrey)](#)
-
 # Media Processing Microservices App
 
 A lightweight event-driven microservices project for uploading videos, converting them to MP3, storing files in MongoDB GridFS, and notifying users by email.
