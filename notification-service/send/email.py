@@ -6,6 +6,11 @@ import ssl
 from email.message import EmailMessage
 from typing import Any, Dict
 
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
 logging.basicConfig(level=logging.INFO)
 
 def notification(message: Any) -> bool:
@@ -26,7 +31,8 @@ def notification(message: Any) -> bool:
     mp3_fid = payload.get("mp3_fid")
     receiver_address = payload.get("username")
 
-    if not receiver_address or mp3_fid or mp3_fid=='none' :
+    # FIXED: check for missing mp3_fid and missing username correctly
+    if not receiver_address or not mp3_fid or mp3_fid == "none":
         logging.error("Missing mp3_fid or username in payload: %s", payload)
         return False
 
@@ -48,7 +54,7 @@ def notification(message: Any) -> bool:
     msg.set_content(body)
     msg["Subject"] = subject
     msg["From"] = sender_address
-    msg["To"] = sender_address
+    msg["To"] = receiver_address
 
     try:
         context = ssl.create_default_context()

@@ -2,11 +2,19 @@ import os
 import json
 import time
 import logging
+from pathlib import Path
+
 import pika
-from send import email
 from dotenv import load_dotenv
 
-load_dotenv()
+from send import email
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+RABBIT_URL = os.environ.get("RABBITMQ_URL")
+NOTIFICATION_QUEUE = os.environ.get("NOTIFICATION_QUEUE", os.environ.get("MP3_QUEUE", "mp3"))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 RABBIT_URL = os.environ.get("RABBITMQ_URL")
