@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  gateway:
+    build: ./src/gateway-service
+    env_file: .env
+    depends_on:
+      - mongo
+      - rabbitmq
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  converter:
+    build: ./src/converter-service
+    env_file: .env
+    depends_on:
+      - mongo
+      - rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "/app/health_check.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  notification:
+    build: ./src/notification-service
+    env_file: .env
+    depends_on:
+      - mongo
+      - rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "/app/health_check.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  auth:
+    build: ./src/auth-service
+    env_file: .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
